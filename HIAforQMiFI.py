@@ -72,33 +72,27 @@ def getNelsonSiegelForecast(i, h, j):
     
     # make the B(lambda) matrix and y vector
     lamba = 0.0609
-    B = np.stack([np.ones_like(data.T),
-                   (1 - np.exp(-lamba * data.T))/(lamba * data.T),
-                     (1 - np.exp(-lamba * data.T))/(lamba * data.T) - np.exp(-lamba * data.T)], axis=1)       # shape (120, 3, 636)
+    tau = np.arange(1, 121)
+    B = np.stack([np.ones_like(tau),
+                   (1 - np.exp(-lamba * tau))/(lamba * tau),
+                     (1 - np.exp(-lamba * tau))/(lamba * tau) - np.exp(-lamba * tau)], axis=1)       # shape (120, 3, 636)
     
     y = np.asarray(data.T)                                                                                    # shape (120, 636)
 
-    # estimate the beta parameters using data up to time i
-    B_slice = B[:, :, :i]                                                                                           # shape (120, 3, i)
-    y_slice = y[:, :i]                                                                                             # shape (120, i)
+    # estimate the beta parameters using data up to time i                                                                             
+    y_slice = y[:, :i]                                                                                        # shape (120, i)
 
     # initialize beta parameters dictionary
-    beta = {
-        1 : [],
-        2 : [],
-        3: []
-    }
+    beta = {}
 
     # estimate beta parameters for each time t in the sample up to i
-    for t in range(i):    
-        model = LinearRegression(fit_intercept=False)
-        model.fit(B_slice[:,:,t], y_slice[:,t])
-        beta[1].append(model.coef_[0].item())
-        beta[2].append(model.coef_[1].item())
-        beta[3].append(model.coef_[2].item())
+    model = LinearRegression(fit_intercept=False)
+    model.fit(B, y_slice)
 
     # reshape beta parameters
-    beta = {k: np.array(v).reshape(-1, 1) for k, v in beta.items()}
+    beta[1] = model.coef_[:,0].reshape(-1, 1)
+    beta[2] = model.coef_[:,1].reshape(-1, 1)
+    beta[3] = model.coef_[:,2].reshape(-1, 1)
 
 
     # estimate AR(1) for each beta parameter
@@ -115,6 +109,6 @@ def getNelsonSiegelForecast(i, h, j):
     beta3_forecast = recursive_forecast(ar_beta3, beta[3][i-1], h)
 
     # calculate the forecasted yield for maturity j at time i+h
-    tau_hat = np.stack([beta1_forecast, beta2_forecast, beta3_forecast]) @ B[j-1, :, i+h].reshape(-1, 1)
+    tau_hat = np.stack([beta1_forecast, beta2_forecast, beta3_forecast]) @ B[j-1, :].reshape(-1, 1)
 
-    return tau_hat
+    return tau_hat.item()
