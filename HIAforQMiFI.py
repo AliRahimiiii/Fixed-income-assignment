@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+import numpy as np
 
 
 def getTimeSeriesMean(j):
@@ -42,5 +43,22 @@ def getNelsonSiegelForecast(i, h, j):
     data = data.iloc[:, 2:]                                     # Remove year and month columns                  
     data.index = range(1, len(data)+1)                          # Reset index to start from 1
     
-    # Placeholder for the actual implementation of Nelson-Siegel forecasting
+    # make the B(lambda) matrix and y vector
+    lamba = 0.0609
+    B = np.stack([np.ones_like(data.T),
+                   (1 - np.exp(-lamba * data.T))/(lamba * data.T),
+                     (1 - np.exp(-lamba * data.T))/(lamba * data.T) - np.exp(-lamba * data.T)], axis=1)       # shape (120, 3, 636)
+    
+    y = np.asarray(data.T)                                                                                    # shape (120, 636)
+
+    # estimate the beta parameters using data up to time i
+    B = B[:, :, :i]                                                                                           # shape (120, 3, i)
+    y = y[:, :i]                                                                                             # shape (120, i)
+
+    model = LinearRegression(fit_intercept=False)
+    model.fit(B, y)
+
+    # estimate AR(1) for each beta parameter
+    
+
     return data  # Placeholder for the actual implementation
