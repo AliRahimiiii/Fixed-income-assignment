@@ -38,4 +38,9 @@ def getNelsonSiegelForecast(i, h, j):
         The Nelson-Siegel forecast for the specified maturity at time i+h.
     """
 
-    return 0.0  # Placeholder for the actual implementation
+    data = pd.read_excel('LW_monthly_1972-2024.xlsx')           # Load the data
+    data = data.iloc[:, 2:]                                     # Remove year and month columns                  
+    data.index = range(1, len(data)+1)                          # Reset index to start from 1
+    
+    # Placeholder for the actual implementation of Nelson-Siegel forecasting
+    return data  # Placeholder for the actual implementation
