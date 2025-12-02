@@ -133,11 +133,14 @@ def getEHtest(j):
 
 
     # construct y vector and X matrix
-    y = (data.loc[2: , j - 1].values - data.loc[:len(data)-1 , j].values).reshape(-1, 1)                              # shape (634,)
-    X = ((data.loc[:len(data)-1 , j].values - data.loc[:len(data)-1 , 1].values) / (j - 1)).reshape(-1, 1)            # shape (634,)
+    y = data[j - 1].shift(-1) - data[j]                             # shape (635,)
+    X = (data[j] - data[1]) / ((j - 1)/12)                               # shape (635,)
 
     # fit the regression model
+    valid_idx = ~np.isnan(y) & ~np.isnan(X)
+    y_clean = y[valid_idx].values.reshape(-1, 1)
+    X_clean = X[valid_idx].values.reshape(-1, 1)
     model = LinearRegression(fit_intercept=True)
-    model.fit(X, y)
+    model.fit(X_clean, y_clean)
 
     return model.coef_.item()
