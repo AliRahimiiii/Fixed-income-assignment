@@ -112,3 +112,32 @@ def getNelsonSiegelForecast(i, h, j):
     tau_hat = np.stack([beta1_forecast, beta2_forecast, beta3_forecast]) @ B[j-1, :].reshape(-1, 1)
 
     return tau_hat.item()
+
+def getEHtest(j):
+    """
+    Calculates the beta(tau) of EH test for a specific maturity j.
+
+    Parameters
+    ----------
+    j : int
+        The index of the maturity to test. (ranges from 2 to 120)
+
+    Returns
+    -------
+    float
+        The beta(tau) for the specified maturity.
+    """
+    data = pd.read_excel('LW_monthly_1972-2024.xlsx')           # Load the data
+    data = data.iloc[:, 2:]                                     # Remove year and month columns                  
+    data.index = range(1, len(data)+1)                          # Reset index to start from 1
+
+
+    # construct y vector and X matrix
+    y = (data.loc[2: , j - 1].values - data.loc[:len(data)-1 , j].values).reshape(-1, 1)                              # shape (634,)
+    X = ((data.loc[:len(data)-1 , j].values - data.loc[:len(data)-1 , 1].values) / (j - 1)).reshape(-1, 1)            # shape (634,)
+
+    # fit the regression model
+    model = LinearRegression(fit_intercept=True)
+    model.fit(X, y)
+
+    return model.coef_.item()
