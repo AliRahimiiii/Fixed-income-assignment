@@ -144,3 +144,34 @@ def getEHtest(j):
     model.fit(X_clean, y_clean)
 
     return model.coef_.item()
+
+def getVasicekPrice(kappa, mu, sigma, r_t, tau):
+    """
+    Calculates the one factor Vasicek bond price for given parameters.
+
+    Parameters
+    ----------
+    kappa : float
+        The speed of mean reversion.
+    mu : float
+        The long-term mean level.
+    sigma : float
+        The volatility of interest rates.
+    r_t : float
+        The current short-term interest rate.
+    tau : int
+        The maturity in months.
+
+    Returns
+    -------
+    float
+        The one factor Vasicek bond price for the given parameters.
+    """
+    tau_years = tau / 12.0                         # Convert tau from months to years
+    
+    B_tau = (np.exp(-kappa * tau_years) - 1) / kappa
+    A_tau = (B_tau + tau_years) * (sigma**2 / (2 * kappa**2) - mu + 0) - (sigma**2 * B_tau**2) / (4 * kappa)
+
+    P_t_tau = np.exp(A_tau + B_tau * r_t)
+
+    return P_t_tau
