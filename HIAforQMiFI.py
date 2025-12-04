@@ -174,3 +174,55 @@ def getVasicekPrice(kappa, mu, sigma, r_t, tau):
     P_t_tau = np.exp(A_tau + B_tau * r_t)
 
     return P_t_tau
+
+def getSimBondOptionPrice(kappa, mu, sigma, r_0, R, delta, T_0, T_1, K):
+    """
+    Simulates the price of a European bond option using the Vasicek model.
+
+    Parameters
+    ----------
+    kappa : float
+        The speed of mean reversion.
+    mu : float
+        The long-term mean level.
+    sigma : float
+        The volatility of interest rates.
+    r_0 : float
+        The initial short-term interest rate.
+    R : int
+        The number of simulation paths.
+    delta : float
+        The time step for the simulation.
+    T_0 : float
+        The option maturity in years.
+    T_1 : float
+        The bond maturity in years.
+    K : float
+        The strike price of the option.
+
+    Returns
+    -------
+    float
+        The simulated price of the European bond option.
+    """
+    n_steps = T_0 / delta
+    std_srt = sigma * np.sqrt((1 - np.exp(-2 * kappa * delta)) / (2 * kappa))
+    
+
+    rates = np.zeros((R, int(n_steps)))
+    payoff = []
+    # Simulate R paths
+    for i in range(R):
+        rates[i, 0] = r_0
+        # Simulate the short rate path
+        for j in range(1, int(n_steps)):
+            z = np.random.normal(0, 1)
+            rates[i, j] = rates[i, j-1] * np.exp(-kappa * delta) + mu * (1 - np.exp(-kappa * delta)) + std_srt * z
+        
+        # Calculate the option payoff at T_0
+        discount_factor = np.exp(-np.sum(rates[i, :]) * delta)
+        P_T1 = getVasicekPrice(kappa, mu, sigma, rates[i, -1], T_1 - T_0)
+        payoff.append(discount_factor * max(P_T1 - K, 0))
+
+    option_price = np.mean(payoff)
+    return option_price
