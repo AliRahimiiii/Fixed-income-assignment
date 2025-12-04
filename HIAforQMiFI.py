@@ -18,19 +18,20 @@ def getTimeSeriesMean(j):
         The historical average (time series mean) of the specified maturity.
     """
     data = pd.read_excel('LW_monthly_1972-2024.xlsx')           # Load the data
-    return data.iloc[:, j + 1].mean().item()                    # Calculate and return the mean                   
+    return data.iloc[:, j + 1].mean().item()                    # Calculate and return the mean
 
 
 def getNelsonSiegelForecast(i, h, j):
     """
-    returns a yield curve forecast using the Nelson-Siegel model for a specific maturity j at time i+h using parameters estimated up to time i.
+    returns a yield curve forecast using the Nelson-Siegel model for a specific maturity j at time i+h
+    using parameters estimated up to time i.
 
     Parameters
     ----------
     i : int
         The time index up to which the subsample runs. (ranges from 12 to 612)
     h : int
-        The forecast horizon.  (ranges from 1 to 24)   
+        The forecast horizon.  (ranges from 1 to 24)
     j : int
         The index of the maturity to forecast. (ranges from 1 to 120)
     Returns
@@ -57,30 +58,29 @@ def getNelsonSiegelForecast(i, h, j):
         """
         # Ensure input is 2D (1, 1) for sklearn
         current_val = last_known_value.reshape(1, -1)
-        
+
         for _ in range(h):
             current_val = model.predict(current_val)
-            
+
         return current_val[0, 0].item()
 
-
-
-
     data = pd.read_excel('LW_monthly_1972-2024.xlsx')           # Load the data
-    data = data.iloc[:, 2:]                                     # Remove year and month columns                  
+    data = data.iloc[:, 2:]                                     # Remove year and month columns
     data.index = range(1, len(data)+1)                          # Reset index to start from 1
-    
+
     # make the B(lambda) matrix and y vector
     lamba = 0.0609
     tau = np.arange(1, 121)
-    B = np.stack([np.ones_like(tau),
-                   (1 - np.exp(-lamba * tau))/(lamba * tau),
-                     (1 - np.exp(-lamba * tau))/(lamba * tau) - np.exp(-lamba * tau)], axis=1)       # shape (120, 3, 636)
-    
-    y = np.asarray(data.T)                                                                                    # shape (120, 636)
+    B = np.stack([
+        np.ones_like(tau),
+        (1 - np.exp(-lamba * tau)) / (lamba * tau),
+        (1 - np.exp(-lamba * tau)) / (lamba * tau) - np.exp(-lamba * tau)
+    ], axis=1)  # shape (120, 3, 636)
 
-    # estimate the beta parameters using data up to time i                                                                             
-    y_slice = y[:, :i]                                                                                        # shape (120, i)
+    y = np.asarray(data.T)  # shape (120, 636)
+
+    # estimate the beta parameters using data up to time i
+    y_slice = y[:, :i]  # shape (120, i)
 
     # initialize beta parameters dictionary
     beta = {}
@@ -90,10 +90,9 @@ def getNelsonSiegelForecast(i, h, j):
     model.fit(B, y_slice)
 
     # reshape beta parameters
-    beta[1] = model.coef_[:,0].reshape(-1, 1)
-    beta[2] = model.coef_[:,1].reshape(-1, 1)
-    beta[3] = model.coef_[:,2].reshape(-1, 1)
-
+    beta[1] = model.coef_[:, 0].reshape(-1, 1)
+    beta[2] = model.coef_[:, 1].reshape(-1, 1)
+    beta[3] = model.coef_[:, 2].reshape(-1, 1)
 
     # estimate AR(1) for each beta parameter
     ar_beta1 = LinearRegression(fit_intercept=True)
@@ -113,6 +112,7 @@ def getNelsonSiegelForecast(i, h, j):
 
     return tau_hat.item()
 
+
 def getEHtest(j):
     """
     Calculates the beta(tau) of EH test for a specific maturity j.
@@ -128,9 +128,8 @@ def getEHtest(j):
         The beta(tau) for the specified maturity.
     """
     data = pd.read_excel('LW_monthly_1972-2024.xlsx')           # Load the data
-    data = data.iloc[:, 2:]                                     # Remove year and month columns                  
+    data = data.iloc[:, 2:]                                     # Remove year and month columns
     data.index = range(1, len(data)+1)                          # Reset index to start from 1
-
 
     # construct y vector and X matrix
     y = data[j - 1].shift(-1) - data[j]                             # shape (635,)
@@ -144,6 +143,7 @@ def getEHtest(j):
     model.fit(X_clean, y_clean)
 
     return model.coef_.item()
+
 
 def getVasicekPrice(kappa, mu, sigma, r_t, tau):
     """
@@ -167,13 +167,14 @@ def getVasicekPrice(kappa, mu, sigma, r_t, tau):
     float
         The one factor Vasicek bond price for the given parameters.
     """
-    
+
     B_tau = (np.exp(-kappa * tau) - 1) / kappa
     A_tau = (B_tau + tau) * (sigma**2 / (2 * kappa**2) - mu + 0) - (sigma**2 * B_tau**2) / (4 * kappa)
 
     P_t_tau = np.exp(A_tau + B_tau * r_t)
 
     return P_t_tau
+
 
 def getSimBondOptionPrice(kappa, mu, sigma, r_0, R, delta, T_0, T_1, K):
     """
@@ -207,7 +208,6 @@ def getSimBondOptionPrice(kappa, mu, sigma, r_0, R, delta, T_0, T_1, K):
     """
     n_steps = T_0 / delta
     std_srt = sigma * np.sqrt((1 - np.exp(-2 * kappa * delta)) / (2 * kappa))
-    
 
     rates = np.zeros((R, int(n_steps)))
     payoff = []
@@ -218,7 +218,7 @@ def getSimBondOptionPrice(kappa, mu, sigma, r_0, R, delta, T_0, T_1, K):
         for j in range(1, int(n_steps)):
             z = np.random.normal(0, 1)
             rates[i, j] = rates[i, j-1] * np.exp(-kappa * delta) + mu * (1 - np.exp(-kappa * delta)) + std_srt * z
-        
+
         # Calculate the option payoff at T_0
         discount_factor = np.exp(-np.sum(rates[i, :]) * delta)
         P_T1 = getVasicekPrice(kappa, mu, sigma, rates[i, -1], T_1 - T_0)
